@@ -1,0 +1,13 @@
+[
+    {
+        "elapsed_seconds": 90.02,
+        "wpm": 30.13,
+        "accuracy": 98.67
+    },
+    {
+        "elapsed_seconds": 1.25,
+        "wpm": 19.19,
+        "net_wpm": 0.0,
+        "accuracy": 0.78
+    }
+]
