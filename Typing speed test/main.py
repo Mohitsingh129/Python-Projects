@@ -35,27 +35,14 @@ def calculate_metrics(start_time, end_time, target_sentence, user_input):
     elapsed_minutes = max(elapsed_seconds / 60, 0.001)
     wpm = (len(user_input) / CHARS_PER_WORD) / elapsed_minutes
 
-    edit_row = list(range(len(user_input) + 1))
-    for target_char in target_sentence:
-        next_row = [edit_row[0] + 1]
-        for index, typed_char in enumerate(user_input, start=1):
-            next_row.append(
-                min(
-                    next_row[-1] + 1,
-                    edit_row[index] + 1,
-                    edit_row[index - 1] + (target_char != typed_char),
-                )
-            )
-        edit_row = next_row
-
+    mistakes, weak_keys = analyze_mistakes(target_sentence, user_input)
     compared_length = max(len(target_sentence), len(user_input))
     accuracy = (
-        (compared_length - edit_row[-1]) / compared_length * 100
+        (compared_length - mistakes) / compared_length * 100
         if compared_length
         else 0
     )
-    net_wpm = max(0, len(user_input) - edit_row[-1]) / CHARS_PER_WORD / elapsed_minutes
-    mistakes, weak_keys = analyze_mistakes(target_sentence, user_input)
+    net_wpm = max(0, len(user_input) - mistakes) / CHARS_PER_WORD / elapsed_minutes
 
     return {
         "elapsed_seconds": round(elapsed_seconds, 2),
@@ -70,7 +57,6 @@ def calculate_metrics(start_time, end_time, target_sentence, user_input):
 
 def analyze_mistakes(target_text, typed_text):
     """Count typing errors and attribute them to the intended keys."""
-    mistakes = 0
     weak_keys = {}
     matcher = difflib.SequenceMatcher(None, target_text, typed_text, autojunk=False)
 
@@ -79,14 +65,26 @@ def analyze_mistakes(target_text, typed_text):
             continue
 
         expected = target_text[target_start:target_end]
-        typed = typed_text[typed_start:typed_end]
-        mistakes += max(len(expected), len(typed))
         for character in expected:
             if character.isalpha():
                 key = character.lower()
                 weak_keys[key] = weak_keys.get(key, 0) + 1
 
-    return mistakes, dict(sorted(weak_keys.items(), key=lambda item: (-item[1], item[0])))
+    edit_row = list(range(len(typed_text) + 1))
+    for target_char in target_text:
+        next_row = [edit_row[0] + 1]
+        for index, typed_char in enumerate(typed_text, start=1):
+            next_row.append(
+                min(
+                    next_row[-1] + 1,
+                    edit_row[index] + 1,
+                    edit_row[index - 1] + (target_char != typed_char),
+                )
+            )
+        edit_row = next_row
+
+    sorted_weak_keys = dict(sorted(weak_keys.items(), key=lambda item: (-item[1], item[0])))
+    return edit_row[-1], sorted_weak_keys
 
 
 def read_timed_input(duration_seconds):
@@ -159,7 +157,7 @@ def display_results(metrics, is_personal_best=False):
     print("=" * 40)
     print(f"Time Taken: {metrics['elapsed_seconds']} seconds")
     print(f"Raw Speed:  {metrics['wpm']} WPM")
-    print(f"Net Speed:  {metrics['net_wpm']} WPM")
+    print(f"Net Speed (after mistakes): {metrics['net_wpm']} WPM")
     print(f"Accuracy:   {metrics['accuracy']}%")
     print(f"Mistakes:   {metrics.get('mistakes', 0)} ({metrics.get('error_rate', 0)}% error rate)")
     weak_keys = metrics.get("weak_keys", {})
@@ -329,7 +327,7 @@ def play_sprint(duration_seconds):
     print(f"Go! Type for {duration_seconds} seconds:")
     typed_text, elapsed_seconds = read_timed_input(duration_seconds)
 
-    metrics = calculate_metrics(0, elapsed_seconds, target_text, typed_text)
+    metrics = calculate_metrics(0, elapsed_seconds, target_text[:len(typed_text)], typed_text)
     metrics["elapsed_seconds"] = round(elapsed_seconds, 2)
     metrics["mode"] = f"{duration_seconds}-second sprint"
     metrics["target_seconds"] = duration_seconds
@@ -365,7 +363,7 @@ def main():
         print("5. View History")
         print("6. Exit")
         
-        choice = input("\nChoose an option (1-3): ").strip()
+        choice = input("\nChoose an option (1-6): ").strip()
         
         if choice == "1":
             play_game()
@@ -384,4 +382,7 @@ def main():
             print("\nInvalid choice. Please enter a number from 1 to 6.")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nInterrupted. Goodbye!")

@@ -9,7 +9,7 @@ python main.py
 ```
 
 Features:
-- Standard typing tests with speed, net speed, accuracy, and mistake feedback.
+- Standard typing tests with raw speed, edit-distance mistakes, accuracy, and net WPM after mistakes.
 - 30-second and 60-second sprints with live character input. Sprints require an interactive terminal.
 - An advanced dashboard for best and average speed, net speed, accuracy, consistency, practice time, and recent trends.
 - Weak-key analysis based on the intended letters in mistakes.
